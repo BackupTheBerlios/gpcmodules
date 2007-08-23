@@ -107,6 +107,7 @@ static void _e_fwin_window_title_set(E_Fwin *fwin);
 static void _e_fwin_path_change_cb(void *data, Evas_Object *obj, void *event_info);
 static void _e_fwin_go_up_cb(void *data, Evas_Object *obj, void *event_info);
 static void _e_fwin_desktop_edit(void *data, E_Menu *m, E_Menu_Item *mi);
+static int _cb_desk_name_sort(Efreet_Desktop *d1, Efreet_Desktop *d2);
 
 /* local subsystem globals */
 static Evas_List *fwins = NULL;
@@ -1021,7 +1022,9 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
    const char *f;
    int need_dia = 0;
    Evas_Hash *mimes = NULL;
-   Evas_List *mlist = NULL;
+   Evas_List *mlist = NULL, *d = NULL;
+   Ecore_List *cats;
+   char *cat;
 
    if (fwin->fad)
      {
@@ -1299,8 +1302,54 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
      }
 
    of = e_widget_framelist_add(evas, _("All Applications"), 0);
+   o = e_widget_ilist_add(evas, 24, 24, &(fad->app2));
+   e_widget_ilist_freeze(o);
    
+   /* 
+    *     Load List of All Apps based on Favorites Editor code
+    * 
+    * THIS REALLY NEEDS CLEANUP - Will get to it soon
+    * 
+    */ 
+
+   cats = efreet_util_desktop_categories_list();
+   ecore_list_sort(cats, ECORE_COMPARE_CB(strcmp), ECORE_SORT_MIN);
+   ecore_list_first_goto(cats);
+   while ((cat = ecore_list_next(cats))) 
+     {
+	Ecore_List *desks;
+	Efreet_Desktop *desk;
+	
+	desks = efreet_util_desktop_category_list(cat);
+	ecore_list_sort(desks, ECORE_COMPARE_CB(_cb_desk_name_sort), ECORE_SORT_MIN);
+	ecore_list_first_goto(desks);
+	while ((desk = ecore_list_next(desks))) 
+	  {
+	     if (!evas_list_find(d, desk))
+	       d = evas_list_append(d, desk);
+	  }
+     }
+   if (d)
+     {
+	Evas_List *l = NULL;
+	
+	for (l = d; l; l = l->next) 
+	  {
+	     Efreet_Desktop *desk;
+	     Evas_Object *icon;
+	     
+	     desk = l->data;
+	     icon = e_util_desktop_icon_add(desk, "24x24", evas);
+	     e_widget_ilist_append(o, icon, desk->name, NULL, NULL, NULL);
+	  }
+	evas_list_free(d);
+     }
+
+   /* End Cleanup Block */
+   
+   e_widget_ilist_go(o);
    e_widget_min_size_set(o, 160, 240);
+   e_widget_ilist_thaw(o);
    e_widget_framelist_object_append(of, o);
    e_widget_list_object_append(ocon, of, 1, 1, 0.5);
    
@@ -1554,4 +1603,12 @@ _e_fwin_desktop_edit(void *data, E_Menu *m, E_Menu_Item *mi)
    if (!desktop) return;
    printf("Desktop: %s\n", desktop->name);
    e_desktop_edit(e_container_current_get(e_manager_current_get()), desktop);
+}
+
+static int 
+_cb_desk_name_sort(Efreet_Desktop *d1, Efreet_Desktop *d2) 
+{
+   if (!d1) return 1;
+   if (!d2) return -1;
+   return (strcmp(d1->name, d2->name));
 }
