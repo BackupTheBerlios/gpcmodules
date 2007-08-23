@@ -79,8 +79,6 @@ static void _e_fwin_parent(void *data, E_Menu *m, E_Menu_Item *mi);
 static void _e_fwin_cb_menu_extend_start(void *data, Evas_Object *obj, E_Menu *m, E_Fm2_Icon_Info *info);
 static void _e_fwin_cb_menu_open(void *data, E_Menu *m, E_Menu_Item *mi);
 static void _e_fwin_cb_menu_open_with(void *data, E_Menu *m, E_Menu_Item *mi);
-
-static void _e_fwin_cb_ilist_change(void *data);
 static void _e_fwin_cb_ilist_selected(void *data, Evas_Object *obj, void *event_info);
 /*
 static void _e_fwin_cb_fm_selection_change(void *data, Evas_Object *obj, void *event_info);
@@ -737,16 +735,6 @@ _e_fwin_cb_menu_open_with(void *data, E_Menu *m, E_Menu_Item *mi)
 }
 
 static void
-_e_fwin_cb_ilist_change(void *data)
-{
-   E_Fwin_Apps_Dialog *fad;
-   
-   fad = data;
-   E_FREE(fad->app2);
-//   if (fad->o_fm) e_fm2_select_set(fad->o_fm, NULL, 0);
-}
-
-static void
 _e_fwin_cb_ilist_selected(void *data, Evas_Object *obj, void *event_info)
 {
    E_Fwin_Apps_Dialog *fad;
@@ -801,6 +789,7 @@ _e_fwin_cb_open(void *data, E_Dialog *dia)
      desktop = efreet_util_desktop_file_id_find(fad->app1);
    else if (fad->app2) 
      desktop = efreet_util_desktop_file_id_find(fad->app2);
+   
    if (desktop)
      {
 	getcwd(pcwd, sizeof(pcwd));
@@ -1259,7 +1248,8 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 	  }
      }
    evas_list_free(mlist);
-   
+
+   /* Create the dialog */
    fad = E_NEW(E_Fwin_Apps_Dialog, 1);
    if (fwin->win)
      dia = e_dialog_new(fwin->win->border->zone->container, 
@@ -1297,7 +1287,7 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 	     desktop = l->data;
 	     oi = e_util_desktop_icon_add(desktop, "24x24", evas);
 	     e_widget_ilist_append(o, oi, desktop->name,
-				   _e_fwin_cb_ilist_change, fad, 
+				   NULL, NULL, 
 				   efreet_util_path_to_file_id(desktop->orig_path));
 	  }
 	evas_list_free(apps);
@@ -1360,7 +1350,8 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 	     desktop = evas_hash_find(d, name);
 	     if (!desktop) continue;
 	     icon = e_util_desktop_icon_add(desktop, "24x24", evas);
-	     e_widget_ilist_append(o, icon, desktop->name, NULL, NULL, NULL);
+	     e_widget_ilist_append(o, icon, desktop->name, NULL, NULL, 
+				   efreet_util_path_to_file_id(desktop->orig_path));
 	  }
 	evas_hash_foreach(d, _desks_hash_cb_free, NULL);
 	evas_hash_free(d);
