@@ -108,6 +108,10 @@ static void _e_fwin_path_change_cb(void *data, Evas_Object *obj, void *event_inf
 static void _e_fwin_go_up_cb(void *data, Evas_Object *obj, void *event_info);
 static void _e_fwin_desktop_edit(void *data, E_Menu *m, E_Menu_Item *mi);
 static int _cb_desk_name_sort(Efreet_Desktop *d1, Efreet_Desktop *d2);
+static int _desk_list_cb_sort(void *data1, void *data2);
+static Evas_Bool _desks_hash_cb_free(Evas_Hash *hash __UNUSED__, 
+				     const char *key, void *data, 
+				     void *fdata __UNUSED__);
 
 /* local subsystem globals */
 static Evas_List *fwins = NULL;
@@ -637,6 +641,7 @@ _e_fwin_menu_extend(void *data, Evas_Object *obj, E_Menu *m, E_Fm2_Icon_Info *in
 {
    E_Fwin *fwin;
    E_Menu_Item *mi;
+   const char *path;
    
    fwin = data;
    if (e_fm2_has_parent_get(obj))
@@ -657,6 +662,9 @@ _e_fwin_menu_extend(void *data, Evas_Object *obj, E_Menu *m, E_Fm2_Icon_Info *in
     */
    if ((info) && (info->mime))
      {
+	path = e_fm2_real_path_get(info->fm);
+	if (!path) return;
+	if (strstr(path, "fileman/favorites")) return;
 	if (!strcmp(info->mime, "application/x-desktop")) 
 	  {
 	     mi = e_menu_item_new(m);
@@ -1021,8 +1029,8 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
    char buf[PATH_MAX];
    const char *f;
    int need_dia = 0;
-   Evas_Hash *mimes = NULL;
-   Evas_List *mlist = NULL, *d = NULL;
+   Evas_Hash *mimes = NULL, *d = NULL;
+   Evas_List *mlist = NULL;
    Ecore_List *cats;
    char *cat;
 
@@ -1301,15 +1309,10 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 				       _e_fwin_cb_ilist_selected, fad);
      }
 
-   of = e_widget_framelist_add(evas, _("All Applications"), 0);
-   o = e_widget_ilist_add(evas, 24, 24, &(fad->app2));
-   e_widget_ilist_freeze(o);
    
+   Evas_List *desk_list = NULL;
    /* 
     *     Load List of All Apps based on Favorites Editor code
-    * 
-    * THIS REALLY NEEDS CLEANUP - Will get to it soon
-    * 
     */ 
 
    cats = efreet_util_desktop_categories_list();
@@ -1325,27 +1328,53 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 	ecore_list_first_goto(desks);
 	while ((desk = ecore_list_next(desks))) 
 	  {
-	     if (!evas_list_find(d, desk))
-	       d = evas_list_append(d, desk);
+	     if (!evas_hash_find(d, desk->name)) 
+	       {
+		  d = evas_hash_direct_add(d, 
+					   evas_stringshare_add(desk->name), 
+					   desk);
+		  desk_list = evas_list_append(desk_list, strdup(desk->name));
+	       }
 	  }
      }
-   if (d)
-     {
-	Evas_List *l = NULL;
-	
-	for (l = d; l; l = l->next) 
-	  {
-	     Efreet_Desktop *desk;
-	     Evas_Object *icon;
-	     
-	     desk = l->data;
-	     icon = e_util_desktop_icon_add(desk, "24x24", evas);
-	     e_widget_ilist_append(o, icon, desk->name, NULL, NULL, NULL);
-	  }
-	evas_list_free(d);
-     }
+   if (desk_list)
+     desk_list = evas_list_sort(desk_list, -1, _desk_list_cb_sort);
 
-   /* End Cleanup Block */
+   of = e_widget_framelist_add(evas, _("All Applications"), 0);
+   o = e_widget_ilist_add(evas, 24, 24, &(fad->app2));
+   e_widget_ilist_freeze(o);
+   
+   if ((d) && (desk_list))
+     {
+	Evas_List *ll = NULL;
+	
+	for (ll = desk_list; ll; ll = ll->next) 
+	  {
+	     Evas_Object *icon;
+	     Efreet_Desktop *desktop;
+	     char *name;
+	     
+	     name = ll->data;
+	     if (!name) continue;
+	     
+	     desktop = evas_hash_find(d, name);
+	     if (!desktop) continue;
+	     icon = e_util_desktop_icon_add(desktop, "24x24", evas);
+	     e_widget_ilist_append(o, icon, desktop->name, NULL, NULL, NULL);
+	  }
+	evas_hash_foreach(d, _desks_hash_cb_free, NULL);
+	evas_hash_free(d);
+	d = NULL;
+	
+	while (desk_list) 
+	  {
+	     char *n;
+	     
+	     n = desk_list->data;
+	     desk_list = evas_list_remove_list(desk_list, desk_list);
+	     free(n);
+	  }
+     }
    
    e_widget_ilist_go(o);
    e_widget_min_size_set(o, 160, 240);
@@ -1592,23 +1621,40 @@ _e_fwin_desktop_edit(void *data, E_Menu *m, E_Menu_Item *mi)
 {
    E_Fm2_Icon_Info *info;
    Efreet_Desktop *desktop;
+   const char *path;
    char buf[4096];
    
    info = data;
    if (!info) return;
    if (!info->file) return;
-   snprintf(buf, sizeof(buf), "%s/%s", 
-	    e_fm2_real_path_get(info->fm), info->file);
+   path = e_fm2_real_path_get(info->fm);
+   if (!path) return;
+   if (strstr(path, "fileman/favorites")) return;
+   
+   snprintf(buf, sizeof(buf), "%s/%s", path, info->file);
    desktop = efreet_desktop_get(buf);
    if (!desktop) return;
-   printf("Desktop: %s\n", desktop->name);
    e_desktop_edit(e_container_current_get(e_manager_current_get()), desktop);
 }
 
 static int 
 _cb_desk_name_sort(Efreet_Desktop *d1, Efreet_Desktop *d2) 
 {
-   if (!d1) return 1;
-   if (!d2) return -1;
-   return (strcmp(d1->name, d2->name));
+   return strcmp(d1->name, d2->name);
+}
+
+static int 
+_desk_list_cb_sort(void *data1, void *data2) 
+{
+   if (!data1) return 1;
+   if (!data2) return -1;
+   return (strcmp((char *)data1, (char *)data2));
+}
+
+static Evas_Bool 
+_desks_hash_cb_free(Evas_Hash *hash __UNUSED__, const char *key, 
+		    void *data, void *fdata __UNUSED__) 
+{
+   if (key) evas_stringshare_del(key);
+   return 1;
 }
