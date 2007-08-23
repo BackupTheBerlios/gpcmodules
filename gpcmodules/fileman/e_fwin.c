@@ -87,7 +87,9 @@ static void _e_fwin_cb_fm_selected(void *data, Evas_Object *obj, void *event_inf
 static void _e_fwin_cb_open(void *data, E_Dialog *dia);
 static void _e_fwin_cb_close(void *data, E_Dialog *dia);
 static void _e_fwin_cb_dialog_free(void *obj);
-static Evas_Bool _e_fwin_cb_hash_foreach(Evas_Hash *hash, const char *key, void *data, void *fdata);
+static Evas_Bool _e_fwin_cb_hash_foreach(Evas_Hash *hash __UNUSED__, 
+					 const char *key, 
+					 void *data __UNUSED__, void *fdata);
 static E_Fwin_Exec_Type _e_fwin_file_is_exec(E_Fm2_Icon_Info *ici);
 static void _e_fwin_file_exec(E_Fwin *fwin, E_Fm2_Icon_Info *ici, E_Fwin_Exec_Type ext);
 static void _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always);
@@ -872,7 +874,8 @@ _e_fwin_cb_dialog_free(void *obj)
 }
 
 static Evas_Bool
-_e_fwin_cb_hash_foreach(Evas_Hash *hash, const char *key, void *data, void *fdata)
+_e_fwin_cb_hash_foreach(Evas_Hash *hash __UNUSED__, const char *key, 
+			void *data __UNUSED__, void *fdata)
 {
    Evas_List **mlist;
    
@@ -1012,15 +1015,13 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
    Evas_Coord mw, mh;
    Evas_Object *o, *ocon, *of, *oi;
    Evas *evas;
-   Evas_List *l = NULL, *apps = NULL;
+   Evas_List *l = NULL, *apps = NULL, *mlist = NULL;
+   Evas_Hash *mimes = NULL, *d = NULL;
+   Ecore_List *cats;
    E_Fwin_Apps_Dialog *fad;
    E_Fm2_Icon_Info *ici;
    char buf[PATH_MAX];
-   const char *f;
    int need_dia = 0;
-   Evas_Hash *mimes = NULL, *d = NULL;
-   Evas_List *mlist = NULL;
-   Ecore_List *cats;
    char *cat;
 
    if (fwin->fad)
@@ -1129,6 +1130,8 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
    /* 1. build hash of mimetypes */
    for (l = files; l; l = l->next)
      {
+	const char *f = NULL;
+
 	ici = l->data;
         if (!((ici->link) && (ici->mount)))
 	  {
