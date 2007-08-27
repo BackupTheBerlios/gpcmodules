@@ -1,0 +1,135 @@
+Index: e_int_menus.c
+===================================================================
+RCS file: /cvs/e/e17/apps/e/src/bin/e_int_menus.c,v
+retrieving revision 1.231
+diff -u -r1.231 e_int_menus.c
+--- e_int_menus.c	27 Aug 2007 09:01:46 -0000	1.231
++++ e_int_menus.c	27 Aug 2007 09:08:37 -0000
+@@ -23,9 +23,9 @@
+ //static void _e_int_menus_fwin_favorites_item_cb(void *data, E_Menu *m, E_Menu_Item *mi);
+ static int  _e_int_menus_main_lock_defer_cb  (void *data);
+ static void _e_int_menus_main_lock           (void *data, E_Menu *m, E_Menu_Item*mi);
+-static void _e_int_menus_main_restart        (void *data, E_Menu *m, E_Menu_Item *mi);
++//static void _e_int_menus_main_restart        (void *data, E_Menu *m, E_Menu_Item *mi);
+ static void _e_int_menus_main_logout         (void *data, E_Menu *m, E_Menu_Item *mi);
+-static void _e_int_menus_main_exit           (void *data, E_Menu *m, E_Menu_Item *mi);
++//static void _e_int_menus_main_exit           (void *data, E_Menu *m, E_Menu_Item *mi);
+ static void _e_int_menus_main_halt           (void *data, E_Menu *m, E_Menu_Item *mi);
+ static void _e_int_menus_main_reboot         (void *data, E_Menu *m, E_Menu_Item *mi);
+ static void _e_int_menus_main_suspend        (void *data, E_Menu *m, E_Menu_Item *mi);
+@@ -163,49 +163,56 @@
+ 
+    subm = e_menu_new();
+    mi = e_menu_item_new(m);
+-   e_menu_item_label_set(mi, _("Enlightenment"));
++   e_menu_item_label_set(mi, _("gOS"));
+    e_util_menu_item_edje_icon_set(mi, "enlightenment/e");
+    e_object_free_attach_func_set(E_OBJECT(subm), _e_int_menus_items_del_hook);
+    e_menu_item_submenu_set(mi, subm);
+ 
+    mi = e_menu_item_new(subm);
+-   e_menu_item_label_set(mi, _("About"));
++   e_menu_item_label_set(mi, _("About gOS"));
+    e_util_menu_item_edje_icon_set(mi, "enlightenment/e");
+    e_menu_item_callback_set(mi, _e_int_menus_main_about, NULL);
+ 
+    mi = e_menu_item_new(subm);
+-   e_menu_item_label_set(mi, _("Theme"));
++   e_menu_item_label_set(mi, _("About Theme"));
+    e_util_menu_item_edje_icon_set(mi, "enlightenment/themes");
+    e_menu_item_callback_set(mi, _e_int_menus_themes_about, NULL);
+    
+    l = evas_hash_find(_e_int_menus_augmentation, "main/5");
+-   if (l) _e_int_menus_augmentation_add(m, l);
+-
+-   mi = e_menu_item_new(subm);
+-   e_menu_item_separator_set(mi, 1);
++   if (l) 
++     {
++	mi = e_menu_item_new(subm);
++	e_menu_item_separator_set(mi, 1);	
++	_e_int_menus_augmentation_add(m, l);
++     }
+    
+    l = evas_hash_find(_e_int_menus_augmentation, "main/6");
+-   if (l) _e_int_menus_augmentation_add(m, l);
+-
+-   mi = e_menu_item_new(subm);
+-   e_menu_item_label_set(mi, _("Restart"));
+-   e_util_menu_item_edje_icon_set(mi, "enlightenment/reset");
+-   e_menu_item_callback_set(mi, _e_int_menus_main_restart, NULL);
+-
+-   mi = e_menu_item_new(subm);
+-   e_menu_item_label_set(mi, _("Exit"));
+-   e_util_menu_item_edje_icon_set(mi, "enlightenment/exit");
+-   e_menu_item_callback_set(mi, _e_int_menus_main_exit, NULL);
+-
++   if (l) 
++     { 
++	mi = e_menu_item_new(m);
++	e_menu_item_separator_set(mi, 1);
++	_e_int_menus_augmentation_add(m, l);
++     }
++   
+    l = evas_hash_find(_e_int_menus_augmentation, "main/7");
+-   if (l) _e_int_menus_augmentation_add(m, l);
++   if (l) 
++     {
++	mi = e_menu_item_new(m);
++	e_menu_item_separator_set(mi, 1);
++	_e_int_menus_augmentation_add(m, l);
++     }
+ 
++   l = evas_hash_find(_e_int_menus_augmentation, "main/8");
++   if (l) 
++     {
++	mi = e_menu_item_new(m);
++	e_menu_item_separator_set(mi, 1);
++	_e_int_menus_augmentation_add(m, l);
++     }
++   
+    mi = e_menu_item_new(m);
+    e_menu_item_separator_set(mi, 1);
+ 
+-   l = evas_hash_find(_e_int_menus_augmentation, "main/8");
+-   if (l) _e_int_menus_augmentation_add(m, l);
+-
+    subm = e_int_menus_config_new();
+    dat->config = subm;
+    mi = e_menu_item_new(m);
+@@ -484,7 +491,7 @@
+    act = e_action_find("desk_deskshow_toggle");
+    if (act) act->func.go(E_OBJECT(m->zone), NULL);
+ }
+-
++/*
+ static void
+ _e_int_menus_main_restart(void *data, E_Menu *m, E_Menu_Item *mi)
+ {
+@@ -493,7 +500,7 @@
+    a = e_action_find("restart");
+    if ((a) && (a->func.go)) a->func.go(NULL, NULL);
+ }
+-
++*/
+ static void
+ _e_int_menus_main_logout(void *data, E_Menu *m, E_Menu_Item *mi)
+ {
+@@ -502,7 +509,7 @@
+    a = e_action_find("logout");
+    if ((a) && (a->func.go)) a->func.go(NULL, NULL);
+ }
+-
++/*
+ static void
+ _e_int_menus_main_exit(void *data, E_Menu *m, E_Menu_Item *mi)
+ {
+@@ -511,7 +518,7 @@
+    a = e_action_find("exit");
+    if ((a) && (a->func.go)) a->func.go(NULL, NULL);
+ }
+-
++*/
+ static void
+ _e_int_menus_main_halt(void *data, E_Menu *m, E_Menu_Item *mi)
+ {
