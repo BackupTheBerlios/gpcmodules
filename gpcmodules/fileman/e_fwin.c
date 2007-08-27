@@ -190,6 +190,8 @@ e_fwin_zone_new(E_Zone *zone, const char *dev, const char *path)
    evas_object_show(o);
    
    o = e_scrollframe_add(zone->container->bg_evas);
+   ecore_x_icccm_state_set(zone->container->bg_win, ECORE_X_WINDOW_STATE_HINT_NORMAL);
+   e_drop_xdnd_register_set(zone->container->bg_win, 1);
    e_scrollframe_custom_theme_set(o, "base/theme/fileman",
 				  "e/fileman/desktop/scrollframe");
    /* FIXME: this theme object will have more versions and options later
@@ -316,6 +318,7 @@ _e_fwin_new(E_Container *con, const char *dev, const char *path)
    Evas_Object *o;
    char buf[4096];
    
+   if (!path) return NULL;
    fwin = E_OBJECT_ALLOC(E_Fwin, E_FWIN_TYPE, _e_fwin_free);
    if (!fwin) return NULL;
    fwin->win = e_win_new(con);
@@ -414,6 +417,8 @@ _e_fwin_new(E_Container *con, const char *dev, const char *path)
    e_win_size_min_set(fwin->win, 24, 24);
    e_win_resize(fwin->win, 280, 200);
    e_win_show(fwin->win);
+   if (fwin->win->evas_win)
+     e_drop_xdnd_register_set(fwin->win->evas_win, 1);
    if (fwin->win->border)
      {
 	if (fwin->win->border->internal_icon)
@@ -1036,7 +1041,7 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 	     ici = l->data;
 	     if ((ici->link) && (ici->mount))
 	       {
-		  if (!fileman_config->view.open_dirs_in_place) 
+		  if (!fileman_config->view.open_dirs_in_place || fwin->zone) 
 		    {
 		       if (fwin->win)
 			 fwin2 = _e_fwin_new(fwin->win->container, ici->link, "/");
@@ -1052,7 +1057,7 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 	     else if ((ici->link) && (ici->removable))
 	       {
 		  snprintf(buf, sizeof(buf), "removable:%s", ici->link);
-		  if (!fileman_config->view.open_dirs_in_place) 
+		  if (!fileman_config->view.open_dirs_in_place || fwin->zone) 
 		    {
 		       if (fwin->win)
 			 fwin2 = _e_fwin_new(fwin->win->container, buf, "/");
@@ -1069,7 +1074,7 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 	       {
 		  if (S_ISDIR(ici->statinfo.st_mode))
 		    {
-		       if (!fileman_config->view.open_dirs_in_place) 
+		       if (!fileman_config->view.open_dirs_in_place || fwin->zone) 
 			 {
 			    if (fwin->win)
 			      fwin2 = _e_fwin_new(fwin->win->container, NULL, ici->real_link);
@@ -1091,7 +1096,7 @@ _e_fwin_file_open_dialog(E_Fwin *fwin, Evas_List *files, int always)
 			   e_fm2_real_path_get(fwin->fm_obj), ici->file);
 		  if (S_ISDIR(ici->statinfo.st_mode))
 		    {
-		       if (!fileman_config->view.open_dirs_in_place) 
+		       if (!fileman_config->view.open_dirs_in_place || fwin->zone) 
 			 {
 			    if (fwin->win)
 			      fwin2 = _e_fwin_new(fwin->win->container, NULL, buf);
