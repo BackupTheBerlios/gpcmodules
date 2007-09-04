@@ -1,0 +1,16 @@
+Index: e_mod_main.c
+===================================================================
+RCS file: /cvs/e/e17/apps/e/src/modules/conf/e_mod_main.c,v
+retrieving revision 1.2
+diff -u -r1.2 e_mod_main.c
+--- e_mod_main.c	18 Aug 2007 10:45:38 -0000	1.2
++++ e_mod_main.c	4 Sep 2007 16:05:07 -0000
+@@ -122,7 +122,7 @@
+    E_Menu_Item *mi;
+    
+    mi = e_menu_item_new(m);
+-   e_menu_item_label_set(mi, _("Configuration Panel"));
++   e_menu_item_label_set(mi, _("My Settings"));
+    e_util_menu_item_edje_icon_set(mi, "enlightenment/configuration");
+    e_menu_item_callback_set(mi, _e_mod_conf_cb, NULL);
+ }
