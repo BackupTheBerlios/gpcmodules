@@ -35,6 +35,9 @@ module_la_SOURCES      = e_mod_main.c \
                          e_mod_main.h \
 			 e_mod_config.c \
 			 e_mod_config.h \
+			 e_fwin_common.h \
+			 e_fwin_dlg.h \
+			 e_fwin_dlg.c \
 			 e_fwin.c \
                          e_fwin.h \
 			 e_toolbar.h \
