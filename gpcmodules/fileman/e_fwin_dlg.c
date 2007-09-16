@@ -182,6 +182,9 @@ _e_fwin_dlg_new(E_Fwin *fwin, Evas_List *apps)
      {
 	of = e_widget_framelist_add(evas, _("Specific Applications"), 0);
 	o = e_widget_ilist_add(evas, 24, 24, &(fad->app1));
+	evas_event_freeze(evas);
+	edje_freeze();
+	e_widget_ilist_freeze(o);
 	fad->o_ilist = o;
 	for (l = apps; l; l = l->next) 
 	  {
@@ -197,6 +200,9 @@ _e_fwin_dlg_new(E_Fwin *fwin, Evas_List *apps)
 	evas_list_free(apps);
 	e_widget_ilist_go(o);
 	e_widget_min_size_set(o, 160, 240);
+	e_widget_ilist_thaw(o);
+	edje_thaw();
+	evas_event_thaw(evas);
 	e_widget_framelist_object_append(of, o);
 	e_widget_list_object_append(o_list, of, 1, 1, 0.5);
 	evas_object_smart_callback_add(o, "selected", 
@@ -230,6 +236,8 @@ _e_fwin_dlg_new(E_Fwin *fwin, Evas_List *apps)
    
    of = e_widget_framelist_add(evas, _("All Applications"), 0);
    o = e_widget_ilist_add(evas, 24, 24, &(fad->app2));
+   evas_event_freeze(evas);
+   edje_freeze();
    e_widget_ilist_freeze(o);
    
    if ((d) && (dl)) 
@@ -266,6 +274,8 @@ _e_fwin_dlg_new(E_Fwin *fwin, Evas_List *apps)
    e_widget_ilist_go(o);
    e_widget_min_size_set(o, 160, 240);
    e_widget_ilist_thaw(o);
+   edje_thaw();
+   evas_event_thaw(evas);
    e_widget_framelist_object_append(of, o);
    e_widget_list_object_append(o_list, of, 1, 1, 0.5);
    
