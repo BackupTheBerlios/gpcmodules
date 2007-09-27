@@ -32,14 +32,16 @@ e_fwin_open_dialog(E_Fwin *fwin, Evas_List *sel)
    for (l = sel; l; l = l->next) 
      {
 	E_Fm2_Icon_Info *ici;
+	E_Fwin_Exec_Type ext;
 	const char *f = NULL;
 	char buf[4096];
 	
 	ici = l->data;
 	if (!ici) continue;
+	ext = _e_fwin_file_is_exec(ici);
 	if (!((ici->link) && (ici->mount))) 
 	  {
-	     if (_e_fwin_file_is_exec(ici) == E_FWIN_EXEC_NONE) 
+	     if (ext == E_FWIN_EXEC_NONE) 
 	       {
 		  if (ici->link) 
 		    {
@@ -54,6 +56,11 @@ e_fwin_open_dialog(E_Fwin *fwin, Evas_List *sel)
 		       mimes = evas_hash_del(mimes, ici->mime, (void *)1);
 		       mimes = evas_hash_direct_add(mimes, ici->mime, (void *)1);
 		    }
+	       }
+	     else 
+	       {
+		  _e_fwin_file_exec(fwin, ici, ext);
+		  return;
 	       }
 	  }
      }
@@ -110,12 +117,14 @@ e_fwin_open_dialog(E_Fwin *fwin, Evas_List *sel)
 		  ext = _e_fwin_file_is_exec(ici);
 		  if (ext != E_FWIN_EXEC_NONE) 
 		    {
+		       printf("Exec File: \n");
 		       _e_fwin_file_exec(fwin, ici, ext);
 		       need_dia = 0;
 		    }
 	       }
 	     if (desk) 
 	       {
+		  printf("Have Desktop File\n");
 		  if (fwin->win) 
 		    {
 		       if (e_exec(fwin->win->border->zone, desk, NULL, files, "fwin"))
@@ -395,6 +404,7 @@ _e_fwin_file_exec(E_Fwin *fwin, E_Fm2_Icon_Info *ici, E_Fwin_Exec_Type ext)
 	  e_exec(fwin->zone, NULL, buf, NULL, NULL);
 	break;
       case E_FWIN_EXEC_DESKTOP:
+	printf("Exec Desktop\n");
 	snprintf(buf, sizeof(buf), "%s/%s", e_fm2_real_path_get(fwin->o_fm), ici->file);
 	desktop = efreet_desktop_new(buf);
 	if (desktop)
