@@ -396,10 +396,18 @@ static void
 _e_fwin_cb_go_up(void *data, Evas_Object *obj, void *event_info) 
 {
    E_Fwin *fwin;
-   
+   char *p, *t;
+
    fwin = data;
    if (!fwin) return;
-   e_fm2_parent_go(fwin->o_fm);
+   t = strdup(e_fm2_real_path_get(fwin->o_fm));
+   p = strrchr(t, '/');
+   if (p) 
+     {
+	*p = 0;
+	if (strlen(t) <= 0) t = "/";
+	e_fm2_path_set(fwin->o_fm, NULL, t);
+     }
 }
 
 static void 
@@ -528,6 +536,7 @@ _e_fwin_window_title_set(E_Fwin *fwin)
 {
    char buf[4096];
    const char *file;
+   char *p, *s;
    
    if (!fwin) return;
    if (fwin->zone) return;
@@ -544,10 +553,22 @@ _e_fwin_window_title_set(E_Fwin *fwin)
    if (fwin->o_tb) 
      {
 	e_toolbar_path_set(fwin->o_tb, e_fm2_real_path_get(fwin->o_fm));
-	if (e_fm2_has_parent_get(fwin->o_fm))
-	  e_toolbar_button_enable(fwin->o_tb, 1);
-	else
-	  e_toolbar_button_enable(fwin->o_tb, 0);
+
+	s = strdup(e_fm2_real_path_get(fwin->o_fm));
+	p = strrchr(s, '/');
+	if (p) 
+	  {
+	     if ((s[0] == '/') && (strlen(s) == 1)) 
+	       e_toolbar_button_enable(fwin->o_tb, 0);
+	     else
+	       e_toolbar_button_enable(fwin->o_tb, 1);
+	  }
+	free(s);
+	
+	//	if (e_fm2_has_parent_get(fwin->o_fm))
+//	  e_toolbar_button_enable(fwin->o_tb, 1);
+//	else
+//	  e_toolbar_button_enable(fwin->o_tb, 0);
      }
 }
 
@@ -805,7 +826,8 @@ _e_fwin_custom_path_eval(E_Fwin *fwin, Efreet_Desktop *desk, const char *prev_pa
      ret = evas_stringshare_add(res);
    else
      {
-	snprintf(buf, sizeof(buf), "%s/%s", e_fm2_real_path_get(fwin->o_fm), res);
+	snprintf(buf, sizeof(buf), "%s/%s", 
+		 e_fm2_real_path_get(fwin->o_fm), res);
 	ret = evas_stringshare_add(buf);
      }
    return ret;

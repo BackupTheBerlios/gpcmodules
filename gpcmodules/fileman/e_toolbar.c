@@ -62,7 +62,8 @@ e_toolbar_path_set(Evas_Object *obj, const char *path)
    E_Toolbar_Smart_Data *sd;
    
    if ((!obj) || !(sd = evas_object_smart_data_get(obj))) return;
-   e_widget_entry_text_set(sd->o_entry, path);
+   e_widget_entry_text_set(sd->o_entry, strdup(path));
+//   evas_object_smart_callback_call(obj, "path_changed", NULL);
 }
 
 EAPI const char *
