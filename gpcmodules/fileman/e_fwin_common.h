@@ -9,9 +9,10 @@ struct _E_Fwin
    
    E_Win *win;
    E_Zone *zone;
-   E_Fwin_Apps_Dialog *fad;
+   Evas_List *fads;
    
    Evas_Object *o_scroll;
+   Evas_Object *o_view;
    Evas_Object *o_fm, *o_bg, *o_tb;
    Evas_Object *o_under, *o_over;
    
@@ -31,6 +32,7 @@ struct _E_Fwin_Apps_Dialog
    E_Fwin *fwin;
    char *app1, *app2;
    Evas_Object *o_ilist, *o_all;
+   Evas_List *files;
 };
 
 typedef enum 

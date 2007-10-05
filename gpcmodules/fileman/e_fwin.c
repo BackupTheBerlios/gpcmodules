@@ -300,6 +300,19 @@ _e_fwin_free(E_Fwin *fwin)
    if (!fwin) return;
    fwins = evas_list_remove(fwins, fwin);
 
+   if (fwin->fads) 
+     {
+	while (fwin->fads) 
+	  {
+	     E_Fwin_Apps_Dialog *fad;
+	     
+	     fad = fwin->fads->data;
+	     if (!fad) continue;
+	     e_object_del(E_OBJECT(fad->dia));
+	     fwin->fads = evas_list_remove_list(fwin->fads, fwin->fads);
+	  }
+     }
+   
    if (!fwin->zone)
      e_drop_xdnd_register_set(fwin->win->evas_win, 0);
    
