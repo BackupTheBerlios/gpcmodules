@@ -790,7 +790,7 @@ _e_fwin_open(E_Fwin *fwin)
 		    }
 	       }
 	     else 
-	       e_fwin_open_dialog(fwin, sel);
+	       e_fwin_open_dialog(fwin, sel, 0);
 	  }
 	else 
 	  {
@@ -813,7 +813,7 @@ _e_fwin_open(E_Fwin *fwin)
 		    }
 	       }
 	     else 
-	       e_fwin_open_dialog(fwin, sel);
+	       e_fwin_open_dialog(fwin, sel, 0);
 	  }
 	if (fwin2) 
 	  {
@@ -959,7 +959,7 @@ _e_fwin_menu_cb_open(void *data, E_Menu *m, E_Menu_Item *mi)
    E_OBJECT_CHECK(fwin);
    sel = e_fm2_selected_list_get(fwin->o_fm);
    if (!sel) return;
-   e_fwin_open_dialog(fwin, sel);
+   e_fwin_open_dialog(fwin, sel, 0);
    evas_list_free(sel);
 }
 
@@ -973,7 +973,7 @@ _e_fwin_menu_cb_open_with(void *data, E_Menu *m, E_Menu_Item *mi)
    E_OBJECT_CHECK(fwin);
    sel = e_fm2_selected_list_get(fwin->o_fm);
    if (!sel) return;
-   e_fwin_open_dialog(fwin, sel);
+   e_fwin_open_dialog(fwin, sel, 1);
    evas_list_free(sel);
 }
 

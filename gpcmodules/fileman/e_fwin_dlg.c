@@ -1,6 +1,7 @@
 #include <e.h>
 #include "e_fwin_common.h"
 #include "e_fwin_dlg.h"
+#include "e_fwin.h"
 
 typedef struct _Fm_File Fm_File;
 struct _Fm_File 
@@ -12,8 +13,8 @@ struct _Fm_File
 
 /* Private Protos */
 static E_Fwin_Exec_Type _file_is_exec(E_Fm2_Icon_Info *ici);
-//static void _file_exec(E_Fwin *fwin, const char *file, E_Fwin_Exec_Type ext);
-static void _open_dialog_new(E_Fwin *fwin, Fm_File *file);
+static void _file_exec(E_Fwin *fwin, E_Fm2_Icon_Info *ici, E_Fwin_Exec_Type ext);
+static void _open_dialog_new(E_Fwin *fwin, Evas_List *apps);
 static void _dia_cb_open(void *data, E_Dialog *dia);
 static void _dia_cb_close(void *data, E_Dialog *dia);
 static void _dia_cb_free(void *data);
@@ -23,47 +24,169 @@ static Evas_List *_dia_get_cats(void);
 static int _dia_cb_desk_list_sort(void *data1, void *data2);
 
 EAPI void
-e_fwin_open_dialog(E_Fwin *fwin, Evas_List *sel) 
+e_fwin_open_dialog(E_Fwin *fwin, Evas_List *sel, int show) 
 {
-   Evas_List *l = NULL;
+   Evas_List *l = NULL, *mimes = NULL, *apps = NULL;
+   int need_dia = 0;
    
-   E_OBJECT_CHECK(fwin);
+   if (!show) 
+     {
+	for (l = sel; l; l = l->next) 
+	  {
+	     E_Fm2_Icon_Info *ici = NULL;
+	     char buf[4096];
+	     
+	     ici = l->data;
+	     if (!ici) continue;
+	     if ((ici->link) && (ici->mount)) 
+	       {
+		  if (fwin->win)
+		    e_fwin_new(fwin->win->container, ici->link, "/");
+		  else if (fwin->zone)
+		    e_fwin_new(fwin->zone->container, ici->link, "/");
+	       }
+	     else if ((ici->link) && (ici->removable))
+	       {
+		  snprintf(buf, sizeof(buf), "removable:%s", ici->link);
+		  if (fwin->win)
+		    e_fwin_new(fwin->win->container, buf, "/");
+		  else if (fwin->zone)
+		    e_fwin_new(fwin->zone->container, buf, "/");
+	       }
+	     else if (ici->real_link) 
+	       {
+		  if (S_ISDIR(ici->statinfo.st_mode)) 
+		    {
+		       if (fwin->win)
+			 e_fwin_new(fwin->win->container, NULL, ici->real_link);
+		       else if (fwin->zone)
+			 e_fwin_new(fwin->zone->container, NULL, ici->real_link);
+		    }
+		  else
+		    need_dia = 1;
+	       }
+	     else 
+	       {
+		  snprintf(buf, sizeof(buf), "%s/%s", 
+			   e_fm2_real_path_get(fwin->o_fm), ici->file);
+		  if (S_ISDIR(ici->statinfo.st_mode)) 
+		    {
+		       if (fwin->win)
+			 e_fwin_new(fwin->win->container, NULL, buf);
+		       else if (fwin->zone)
+			 e_fwin_new(fwin->zone->container, NULL, buf);
+		    }
+		  else
+		    need_dia = 1;
+	       }
+	  }
+	if (!need_dia) return;
+	need_dia = 0;
+     }
    
-   /* Loop the selected files */
+   /* build mime type list */
    for (l = sel; l; l = l->next) 
      {
 	E_Fm2_Icon_Info *ici = NULL;
-	Fm_File *file = NULL;
-	Ecore_List *ml = NULL;
-	Efreet_Desktop *desk = NULL;
 	const char *f = NULL;
-	char buf[4096];
-	
+	     
 	ici = l->data;
 	if (!ici) continue;
-	if ((ici->link) && (ici->mount)) continue;
-	snprintf(buf, sizeof(buf), "%s/%s", 
-		 e_fm2_real_path_get(fwin->o_fm), ici->file);
-	if (ici->link)
-	  f = e_fm_mime_filename_get(ici->link);
-	else if (ici->mime) f = strdup(ici->mime);
-	file = E_NEW(Fm_File, 1);
-	file->file = evas_stringshare_add(buf);
-	file->ext = _file_is_exec(ici);
-	if (f) 
+	if (!((ici->link) && (ici->mount))) 
 	  {
-	     ml = efreet_util_desktop_mime_list(f);
-	     if (ml) 
+	     if (_file_is_exec(ici) == E_FWIN_EXEC_NONE) 
 	       {
-		  ecore_list_first_goto(ml);
-		  while ((desk = ecore_list_next(ml)))
-		    file->apps = evas_list_append(file->apps, desk);
-		  ecore_list_destroy(ml);
+		  if (ici->link) 
+		    f = e_fm_mime_filename_get(ici->link);
+		  else if (ici->mime)
+		    f = strdup(ici->mime);
+		  if (f)
+		    mimes = evas_list_append(mimes, f);
 	       }
 	  }
-	/* Show an open with dialog for this file */
-	_open_dialog_new(fwin, file);
      }
+   
+   /* Make app list */
+   if (mimes) 
+     {
+	for (l = mimes; l; l = l->next) 
+	  {
+	     Ecore_List *ml = NULL;
+	     Efreet_Desktop *desk;
+	     
+	     ml = efreet_util_desktop_mime_list(l->data);
+	     if (!ml) continue;
+	     ecore_list_first_goto(ml);
+	     while (desk = ecore_list_next(ml))
+	       apps = evas_list_append(apps, desk);
+	     ecore_list_destroy(ml);
+	  }
+     }
+   
+   if (!show) 
+     {
+	if (evas_list_count(mimes) <= 1) 
+	  {
+	     Efreet_Desktop *desk = NULL;
+	     Ecore_List *files_list = NULL;
+	     char pcwd[4096];
+	     
+	     need_dia = 1;
+	     if (mimes) desk = e_exehist_mime_desktop_get(mimes->data);
+	     getcwd(pcwd, sizeof(pcwd));
+	     chdir(e_fm2_real_path_get(fwin->o_fm));
+	     
+	     files_list = ecore_list_new();
+	     ecore_list_free_cb_set(files_list, free);
+	     for (l = sel; l; l = l->next) 
+	       {
+		  E_Fm2_Icon_Info *ici = NULL;
+		  
+		  ici = l->data;
+		  if (!ici) continue;
+		  if (_file_is_exec(ici) == E_FWIN_EXEC_NONE)
+		    ecore_list_append(files_list, strdup(ici->file));
+	       }
+	     for (l = sel; l; l = l->next) 
+	       {
+		  E_Fm2_Icon_Info *ici = NULL;
+		  E_Fwin_Exec_Type ext;
+		  
+		  ici = l->data;
+		  if (!ici) continue;
+		  ext = _file_is_exec(ici);
+		  if (ext != E_FWIN_EXEC_NONE) 
+		    {
+		       _file_exec(fwin, ici, ext);
+		       need_dia = 0;
+		    }
+	       }
+	     if (desk) 
+	       {
+		  if (fwin->win) 
+		    {
+		       if (e_exec(fwin->win->border->zone, desk, NULL, files_list, "fwin"))
+			 need_dia = 0;
+		    }
+		  else if (fwin->zone) 
+		    {
+		       if (e_exec(fwin->zone, desk, NULL, files_list, "fwin"))
+			 need_dia = 0;
+		    }
+	       }
+	     ecore_list_destroy(files_list);
+	     
+	     chdir(pcwd);
+	     if (!need_dia) 
+	       {
+		  if (apps) evas_list_free(apps);
+		  evas_list_free(mimes);
+		  return;
+	       }
+	  }
+     }
+   evas_list_free(mimes);
+   _open_dialog_new(fwin, apps);
 }
 
 /* Private Functions */
@@ -128,13 +251,15 @@ _file_is_exec(E_Fm2_Icon_Info *ici)
      }
    return E_FWIN_EXEC_NONE;   
 }
-/*
+
 static void 
-_file_exec(E_Fwin *fwin, const char *file, E_Fwin_Exec_Type ext)
+_file_exec(E_Fwin *fwin, E_Fm2_Icon_Info *ici, E_Fwin_Exec_Type ext)
 {
    char buf[4096];
    Efreet_Desktop *desktop;
+   const char *file = NULL;
    
+   file = strdup(ici->file);
    switch (ext)
      {
       case E_FWIN_EXEC_NONE:
@@ -168,8 +293,7 @@ _file_exec(E_Fwin *fwin, const char *file, E_Fwin_Exec_Type ext)
 	  e_exec(fwin->zone, NULL, buf, NULL, NULL);
 	break;
       case E_FWIN_EXEC_DESKTOP:
-	printf("Desktop File: %s\n", file);
-//	snprintf(buf, sizeof(buf), "%s/%s", e_fm2_real_path_get(fwin->o_fm), file);
+	snprintf(buf, sizeof(buf), "%s/%s", e_fm2_real_path_get(fwin->o_fm), file);
 	desktop = efreet_desktop_new(file);
 	if (desktop)
 	  {
@@ -184,10 +308,9 @@ _file_exec(E_Fwin *fwin, const char *file, E_Fwin_Exec_Type ext)
 	break;
      }   
 }
-*/
 
 static void 
-_open_dialog_new(E_Fwin *fwin, Fm_File *file) 
+_open_dialog_new(E_Fwin *fwin, Evas_List *apps) 
 {
    E_Fwin_Apps_Dialog *fad = NULL;
    E_Container *con = NULL;
@@ -196,10 +319,8 @@ _open_dialog_new(E_Fwin *fwin, Fm_File *file)
    Evas_Object *o, *of, *o_list;
    Evas_List *l = NULL, *dl = NULL;
    Evas_Coord w, h;
-   char buf[4096];
    
    E_OBJECT_CHECK(fwin);
-   if (!file) return;
    if (fwin->win)
      con = fwin->win->border->zone->container;
    else if (fwin->zone)
@@ -208,10 +329,8 @@ _open_dialog_new(E_Fwin *fwin, Fm_File *file)
 
    fad = E_NEW(E_Fwin_Apps_Dialog, 1);
    fwin->fads = evas_list_append(fwin->fads, fad);
-   fad->files = evas_list_append(fad->files, file);
-   snprintf(buf, sizeof(buf), _("Open %s With..."), file->file);
    dia = e_dialog_new(con, "E", "_fwin_open_apps");
-   e_dialog_title_set(dia, buf);
+   e_dialog_title_set(dia, _("Open With..."));
    e_dialog_border_icon_set(dia, "enlightenment/applications");
    e_dialog_button_add(dia, _("Open"), "enlightenment/open", _dia_cb_open, fad);
    e_dialog_button_add(dia, _("Close"), "enlightenment/close", _dia_cb_close, fad);
@@ -222,7 +341,7 @@ _open_dialog_new(E_Fwin *fwin, Fm_File *file)
 
    evas = e_win_evas_get(dia->win);
    o_list = e_widget_list_add(evas, 1, 1);
-   if (file->apps) 
+   if (apps) 
      {
 	of = e_widget_framelist_add(evas, _("Specific Applications"), 0);
 	o = e_widget_ilist_add(evas, 24, 24, &(fad->app1));
@@ -230,7 +349,7 @@ _open_dialog_new(E_Fwin *fwin, Fm_File *file)
 	edje_freeze();
 	e_widget_ilist_freeze(o);
 	fad->o_ilist = o;
-	for (l = file->apps; l; l = l->next) 
+	for (l = apps; l; l = l->next) 
 	  {
 	     Efreet_Desktop *desk = NULL;
 	     Evas_Object *oi = NULL;
@@ -290,7 +409,9 @@ _dia_cb_open(void *data, E_Dialog *dia)
 {
    E_Fwin_Apps_Dialog *fad;
    Efreet_Desktop *desktop = NULL;
-   Evas_List *l = NULL;
+   char pcwd[4096], buf[4096];
+   Evas_List *selected = NULL, *l = NULL;
+   E_Fm2_Icon_Info *ici;
    Ecore_List *files = NULL;
    
    fad = data;
@@ -298,24 +419,60 @@ _dia_cb_open(void *data, E_Dialog *dia)
      desktop = efreet_util_desktop_file_id_find(fad->app1);
    else if (fad->app2) 
      desktop = efreet_util_desktop_file_id_find(fad->app2);
-   
    if (desktop)
      {
-	files = ecore_list_new();
-	ecore_list_free_cb_set(files, free);
-	for (l = fad->files; l; l = l->next)
+	getcwd(pcwd, sizeof(pcwd));
+	chdir(e_fm2_real_path_get(fad->fwin->o_fm));
+
+	selected = e_fm2_selected_list_get(fad->fwin->o_fm);
+	if (selected)
 	  {
-	     Fm_File *file = NULL;
-	     
-	     file = l->data;
-	     if (!file) continue;
-	     ecore_list_append(files, strdup(file->file));
+	     files = ecore_list_new();
+	     ecore_list_free_cb_set(files, free);
+	     for (l = selected; l; l = l->next)
+	       {
+		  E_Fwin_Exec_Type ext;
+		  
+		  ici = l->data;
+		  /* this snprintf is silly - but it's here in case i really do
+		   * need to provide full paths (seems silly since we chdir
+		   * into the dir)
+		   */
+		  buf[0] = 0;
+		  ext = _file_is_exec(ici);
+		  if (ext != E_FWIN_EXEC_NONE)
+		    _file_exec(fad->fwin, ici, ext);
+		  else
+		    {
+		       if (!((ici->link) && (ici->mount)))
+			 {
+			    if (ici->link)
+			      {
+				 if (!S_ISDIR(ici->statinfo.st_mode))
+				   snprintf(buf, sizeof(buf), "%s", ici->file);
+			      }
+			    else
+			      {
+				 if (!S_ISDIR(ici->statinfo.st_mode))
+				   snprintf(buf, sizeof(buf), "%s", ici->file);
+			      }
+			 }
+		    }
+		  if (buf[0] != 0)
+		    {
+		       if (ici->mime)
+			 e_exehist_mime_desktop_add(ici->mime, desktop);
+		       ecore_list_append(files, strdup(ici->file));
+		    }
+	       }
+	     evas_list_free(selected);
+	     if (fad->fwin->win)
+	       e_exec(fad->fwin->win->border->zone, desktop, NULL, files, "fwin");
+	     else if (fad->fwin->zone)
+	       e_exec(fad->fwin->zone, desktop, NULL, files, "fwin");
+	     ecore_list_destroy(files);
 	  }
-	if (fad->fwin->win)
-	  e_exec(fad->fwin->win->border->zone, desktop, NULL, files, "fwin");
-	else if (fad->fwin->zone)
-	  e_exec(fad->fwin->zone, desktop, NULL, files, "fwin");
-	ecore_list_destroy(files);
+	chdir(pcwd);
      }
    e_object_del(E_OBJECT(fad->dia));
 }
@@ -338,17 +495,6 @@ _dia_cb_free(void *data)
    
    dia = (E_Dialog *)data;
    fad = dia->data;
-   while (fad->files) 
-     {
-	Fm_File *file;
-	
-	file = fad->files->data;
-	if (!file) continue;
-	if (file->file) evas_stringshare_del(file->file);
-	fad->files = evas_list_remove_list(fad->files, fad->files);
-	E_FREE(file);
-     }
-   
    if (fad->fwin->fads) 
      {
 	if (evas_list_find(fad->fwin->fads, fad))
