@@ -3,14 +3,6 @@
 #include "e_fwin_dlg.h"
 #include "e_fwin.h"
 
-typedef struct _Fm_File Fm_File;
-struct _Fm_File 
-{
-   const char *file;
-   int ext;
-   Evas_List *apps;
-};
-
 /* Private Protos */
 static E_Fwin_Exec_Type _file_is_exec(E_Fm2_Icon_Info *ici);
 static void _file_exec(E_Fwin *fwin, E_Fm2_Icon_Info *ici, E_Fwin_Exec_Type ext);
