@@ -120,7 +120,7 @@ _e_toolbar_smart_add(Evas_Object *obj)
    
    edje_object_part_text_set(sd->o_base, "e.text.location", _("Location:"));
 
-   o = e_widget_entry_add(evas, &(sd->path));
+   o = e_widget_entry_add(evas, &(sd->path), NULL, NULL, NULL);
    sd->o_entry = o;
    edje_object_part_swallow(sd->o_base, "e.swallow.entry", o);
    evas_object_show(o);
