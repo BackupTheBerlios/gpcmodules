@@ -34,8 +34,14 @@ e_modapi_init(E_Module *m)
    E_Manager *man;
    E_Container *con;
    E_Zone *zone;
+   char buf[4096];
    
    conf_module = m;
+
+   /* Check that Trash dir exists */
+   snprintf(buf, sizeof(buf), "%s/Trash", efreet_data_home_get());
+   printf("Checking: %s\n", buf);
+   if (!ecore_file_exists(buf)) ecore_file_mkpath(buf);
 
    /* Setup Entry in Config Panel */
    e_configure_registry_category_add("fileman", 100, _("File Manager"), 
